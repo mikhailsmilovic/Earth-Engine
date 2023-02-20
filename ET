@@ -1,0 +1,225 @@
+//  First, import a shapefile of a region (import an asset), and rename this variable as ET_region
+
+//  Authors: Mikhail Smilovic, 
+//  Changes and improvements encouraged 
+
+Map.addLayer(ET_region);
+Map.centerObject(ET_region);
+
+// Ideally, we could loop through this list
+var ET_Sources = ee.List([
+  ["NASA/GLDAS/V021/NOAH/G025/T3H", 24*60*60, 'Evap_tavg', 27380, 'ET GLDAS'],
+  ["MODIS/NTSG/MOD16A2/105", 0.1/8, 'ET', 1000, 'ET MODIS 1km'],
+  ["MODIS/006/MOD16A2", 0.1/8, 'ET', 1000, 'ET MODIS 500m'],
+  ["IDAHO_EPSCOR/TERRACLIMATE", 0.1/30, 'aet', 4640, 'ET TerraClimate'],
+  ["NASA/SMAP/SPL4SMGP/007", 24*60*60, 'land_evapotranspiration_flux', 1100, 'ET SMAP'],
+  ["CAS/IGSNRR/PML/V2_v017", 1, 500, ['Ec','Es','Ei'], 'ET Penman-Monteith-Leuning']
+  ]);
+
+//////////////////////////////////////////////////////////////////////////
+// GLDAS-2.1: Global Land Data Assimilation System
+
+var collection = ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H") //ET_Sources[i][0]
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(24*60*60) //kg2/m2/s //ET_Sources[i][1]
+        .set('system:time_start', start) })
+
+var ET = ee.ImageCollection(month_mean).select('Evap_tavg'); //ET_Sources[i][2]
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: ET,
+    region: ET_region,
+    reducer: ee.Reducer.mean(),
+    scale: 27380, //ET_Sources[i][3]
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'ET GLDAS', //ET_Sources[i][4]
+      vAxis: {title: 'average mm/day'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
+
+//////////////////////////////////////////////////////////////////////////
+// MOD16A2: MODIS Global Terrestrial Evapotranspiration 8-Day Global 1km
+
+var collection = ee.ImageCollection("MODIS/NTSG/MOD16A2/105")
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(0.1/8) //kg2/m2/8day with 0.1 scaling
+        .set('system:time_start', start) })
+
+var ET = ee.ImageCollection(month_mean).select('ET'); 
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: ET,
+    region: ET_region,
+    reducer: ee.Reducer.mean(),
+    scale: 1000,
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'ET MODIS 1km',
+      vAxis: {title: 'average mm/day'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
+
+//////////////////////////////////////////////////////////////////////////
+// MOD16A2.006: Terra Net Evapotranspiration 8-Day Global 500m
+
+var collection = ee.ImageCollection("MODIS/006/MOD16A2")
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(0.1/8) //kg2/m2/8day with 0.1 scaling
+        .set('system:time_start', start) })
+
+var ET = ee.ImageCollection(month_mean).select('ET'); 
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: ET,
+    region: ET_region,
+    reducer: ee.Reducer.mean(),
+    scale: 500,
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'ET MODIS 500m',
+      vAxis: {title: 'average mm/day'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
+
+//////////////////////////////////////////////////////////////////////////
+// TerraClimate: Monthly Climate and Climatic Water Balance for Global Terrestrial Surfaces, University of Idaho
+
+var collection = ee.ImageCollection("IDAHO_EPSCOR/TERRACLIMATE")
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(0.1/30) //mm total monthly with 0.1 scaling
+        .set('system:time_start', start) })
+
+var ET = ee.ImageCollection(month_mean).select('aet'); 
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: ET,
+    region: ET_region,
+    reducer: ee.Reducer.mean(),
+    scale: 4640,
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'ET TerraClimate',
+      vAxis: {title: 'average mm/day'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
+
+//////////////////////////////////////////////////////////////////////////
+// SPL4SMGP.007 SMAP L4 Global 3-hourly 9-km Surface and Root Zone Soil Moisture
+
+var collection = ee.ImageCollection("NASA/SMAP/SPL4SMGP/007")
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(24*60*60) //kg m^-2 s^-1
+        .set('system:time_start', start) })
+
+var ET = ee.ImageCollection(month_mean).select('land_evapotranspiration_flux'); 
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: ET,
+    region: ET_region,
+    reducer: ee.Reducer.mean(),
+    scale: 11000,
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'ET SMAP',
+      vAxis: {title: 'average mm/day'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
+
+//////////////////////////////////////////////////////////////////////////
+// PML_V2 0.1.7: Coupled Evapotranspiration and Gross Primary Product (GPP)
+
+var collection = ee.ImageCollection("CAS/IGSNRR/PML/V2_v017")
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(1) //mm d-1
+        .set('system:time_start', start) })
+
+var ET = ee.ImageCollection(month_mean).select(['Ec','Es','Ei']); 
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: ET,
+    region: ET_region,
+    reducer: ee.Reducer.mean(),
+    scale: 500,
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'ET Penman-Monteith-Leuning',
+      vAxis: {title: 'average mm/day'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
+
+//  References:
+//  monthly average function inspired by 
+//  https://stackoverflow.com/questions/51710608/reduce-daily-data-to-monthly-using-google-earth-engine/51716560#51716560
