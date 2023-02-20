@@ -1,0 +1,41 @@
+//  First, import a shapefile of a region (import an asset), and rename this variable as ET_region
+
+//  Authors: Mikhail Smilovic, 
+//  Changes and improvements encouraged 
+
+Map.addLayer(region);
+Map.centerObject(region);
+
+//////////////////////////////////////////////////////////////////////////
+// TRMM 3B43: Monthly Precipitation Estimates
+
+var collection = ee.ImageCollection("TRMM/3B43V7") 
+var range = collection.reduceColumns(ee.Reducer.minMax(), ['system:time_start'])
+var diff = ee.Date(range.get('max')).difference(ee.Date(range.get('min')), 'months');
+
+var month_mean = ee.List.sequence(0, diff).map(function(n) { // .sequence: number of years from starting year to present
+  var start = ee.Date(range.get('min')).advance(n, 'month'); // Starting date
+  var end = start.advance(1, 'month'); // Step by each iteration
+
+  return collection
+        .filterDate(start, end)
+        .mean().multiply(1) //mm/hr
+        .set('system:time_start', start) })
+
+var collection = ee.ImageCollection(month_mean).select('precipitation'); 
+
+var TimeSeries = ui.Chart.image.series({
+    imageCollection: collection,
+    region: region,
+    reducer: ee.Reducer.mean(),
+    scale: 27830, 
+    xProperty: 'system:time_start',
+  }).setChartType('ScatterChart')
+    .setOptions({
+      title: 'TRMM 3B43', 
+      vAxis: {title: 'average mm/hr'},
+      lineWidth: 1,
+      pointSize: 1,
+    });
+
+print(TimeSeries)
