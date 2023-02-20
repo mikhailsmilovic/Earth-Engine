@@ -1,4 +1,4 @@
-//  First, import a shapefile of a region (import an asset), and rename this variable as ET_region
+//  First, import a shapefile of a region (import an asset), and rename this variable as region
 
 //  Authors: Mikhail Smilovic, 
 //  Changes and improvements encouraged 
