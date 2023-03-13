@@ -208,7 +208,7 @@ var TimeSeries = ui.Chart.image.series({
     imageCollection: ET,
     region: ET_region,
     reducer: ee.Reducer.mean(),
-    scale: 500,
+    scale: 1000, //500 is the actual scale, but led to too many pixels for Earth Engine
     xProperty: 'system:time_start',
   }).setChartType('ScatterChart')
     .setOptions({
